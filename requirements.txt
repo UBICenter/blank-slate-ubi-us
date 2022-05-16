@@ -1,0 +1,4 @@
+openfisca-us>=0.62.3
+pandas
+microdf_python
+plotly
