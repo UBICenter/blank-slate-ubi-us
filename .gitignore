@@ -1,4 +1,4 @@
 *.egg-info
 **/*.ipynb_checkpoints
-blank_slate_ubi_us/data/**
+**/*.csv.gz
 **/*.pyc
