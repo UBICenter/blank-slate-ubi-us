@@ -2,3 +2,5 @@
 **/*.ipynb_checkpoints
 **/*.csv.gz
 **/*.pyc
+**/*.log
+.vscode/
