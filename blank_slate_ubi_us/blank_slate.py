@@ -42,8 +42,10 @@ def mean_percentage_loss(
         - df.count_adult * adult_amount
         - df.count_senior * senior_amount
     )
-    loss = np.minimum(0, np.maximum(df.baseline_net_income, 1) / final_net_income - 1)
-    return loss.mean()
+    original_income = df.baseline_net_income
+    absolute_loss = np.maximum(0, original_income - final_net_income)
+    pct_loss = absolute_loss / original_income
+    return np.average(pct_loss[original_income >= 0], weights=df.weight[original_income >= 0] * df.count_person[original_income >= 0])
 
 
 def solve_blank_slate_policy() -> Tuple[float, float, float]:
@@ -61,7 +63,7 @@ def solve_blank_slate_policy() -> Tuple[float, float, float]:
         adult_amount,
     ) = differential_evolution(
         lambda x: mean_percentage_loss(*x),
-        bounds=[(0, 1e4)] * 4,
+        bounds=[(0, 2e4)] * 4,
     ).x
     senior_amount = get_senior_amount(
         young_child_amount,

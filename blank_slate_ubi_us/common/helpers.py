@@ -139,6 +139,7 @@ if not blank_slate_df_path.exists():
                 (age >= 25) & (age < 65), "person", "spm_unit"
             ),
             count_senior=baseline.map_to(age >= 65, "person", "spm_unit"),
+            count_person=baseline.map_to(age >= 0, "person", "spm_unit"),
             funded_net_income=funded.calc(
                 "spm_unit_net_income", 2022
             ),
