@@ -147,6 +147,8 @@ if not blank_slate_df_path.exists():
         )
     )
 
+    blank_slate_df = blank_slate_df[blank_slate_df.baseline_net_income >= 0]
+
     blank_slate_df.to_csv(blank_slate_df_path, compression="gzip")
     logging.info(f"Completed generation of {blank_slate_df_path}.")
 else:
