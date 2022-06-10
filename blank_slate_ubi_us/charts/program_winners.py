@@ -7,6 +7,7 @@ from openfisca_tools import Microsimulation
 import pandas as pd
 from policyengine.utils import charts
 from policyengine.utils.general import PolicyEngineResultsConfig
+from ubicenter import format_fig
 
 NAMES = (
     "Gain more than 5%",
@@ -33,45 +34,48 @@ def intra_decile_graph_data(
     :rtype: pd.DataFrame
     """
     l = []
-    income = baseline.calc(
-        config.equiv_household_net_income_variable
-        if decile_type == "income"
-        else config.household_wealth_variable,
-        map_to="person",
-    )
-    age = baseline.calc("age")
-    decile = np.minimum(age // 10, 8)
     baseline_hh_net_income = baseline.calc(
         config.household_net_income_variable, map_to="person"
     )
     reformed_hh_net_income = reformed.calc(
         config.household_net_income_variable, map_to="person"
     )
+    programs = [
+        "ssi",
+        "snap",
+        "wic",
+        "tanf",
+        "spm_unit_capped_housing_subsidy",
+    ]
     gain = reformed_hh_net_income - baseline_hh_net_income
     rel_gain = gain / np.maximum(baseline_hh_net_income, 1)
     BANDS = (None, 0.05, 1e-3, -1e-3, -0.05, None)
     for upper, lower, name in zip(BANDS[:-1], BANDS[1:], NAMES):
         fractions = []
-        for j in range(0, 9):
-            subset = rel_gain[decile == j]
+        for program in programs:
+            on_program = (
+                baseline.map_to(
+                    baseline.calc(program, map_to="household"),
+                    "household",
+                    "person",
+                ).values
+                > 0
+            )
+            subset = rel_gain[on_program]
             if lower is not None:
                 subset = subset[rel_gain > lower]
             if upper is not None:
                 subset = subset[rel_gain <= upper]
-            fractions += [subset.count() / rel_gain[decile == j].count()]
+            fractions += [subset.count() / rel_gain[on_program].count()]
         tmp = pd.DataFrame(
             {
                 "fraction": fractions,
-                "decile": [
-                    "Under 10",
-                    "10-19",
-                    "20-29",
-                    "30-39",
-                    "40-49",
-                    "50-59",
-                    "60-69",
-                    "70-79",
-                    "80 or over",
+                "program": [
+                    "SSI",
+                    "SNAP",
+                    "WIC",
+                    "TANF",
+                    "Housing subsidies",
                 ],
                 "outcome": name,
             }
@@ -85,7 +89,7 @@ def intra_decile_graph_data(
         all_row = pd.DataFrame(
             {
                 "fraction": [subset.count() / rel_gain.count()],
-                "decile": "All",
+                "program": "All",
                 "outcome": name,
             }
         )
@@ -102,9 +106,7 @@ INTRA_DECILE_COLORS = (
 )[::-1]
 
 
-def intra_decile_label(
-    fraction: float, decile: str, outcome: str, decile_type: str
-) -> str:
+def intra_decile_label(fraction: float, decile: str, outcome: str) -> str:
     """Label for a data point in the intra-decile chart for hovercards.
 
     :param fraction: Share of the decile experiencing the outcome.
@@ -138,7 +140,7 @@ def single_intra_decile_graph(df: pd.DataFrame) -> go.Figure:
     fig = px.bar(
         df,
         x="fraction",
-        y="decile",
+        y="program",
         color="outcome",
         custom_data=["hover"],
         color_discrete_sequence=INTRA_DECILE_COLORS,
@@ -148,33 +150,18 @@ def single_intra_decile_graph(df: pd.DataFrame) -> go.Figure:
     return fig
 
 
-def age_winner_chart(
+def program_winner_chart(
     baseline: Microsimulation,
     reformed: Microsimulation,
     config: Type[PolicyEngineResultsConfig],
-    decile_type: str = "income",
 ) -> dict:
-    """Full intra-decile chart, including a top bar for overall.
-
-    :param baseline: Baseline simulation.
-    :type baseline: Microsimulation
-    :param reformed: Reform simulation.
-    :type reformed: Microsimulation
-    :return: JSON representation of Plotly intra-decile chart.
-    :rtype: dict
-    """
-    df = intra_decile_graph_data(
-        baseline, reformed, config, decile_type=decile_type
-    )
+    df = intra_decile_graph_data(baseline, reformed, config)
     df["hover"] = df.apply(
-        lambda x: intra_decile_label(
-            x.fraction, x.decile, x.outcome, decile_type
-        ),
+        lambda x: intra_decile_label(x.fraction, x.program, x.outcome),
         axis=1,
     )
     # Create the decile figure first, then the total to go above it.
-    decile_fig = single_intra_decile_graph(df[df.decile != "All"])
-    # total_fig = single_intra_decile_graph(df[df.decile == "All"])
+    decile_fig = single_intra_decile_graph(df)
     fig = make_subplots(
         rows=1,
         cols=1,
@@ -182,14 +169,14 @@ def age_winner_chart(
         row_heights=[10],
         vertical_spacing=0.05,
         x_title="Population share",
-        y_title=f"{'Age' if decile_type == 'income' else 'Wealth'} decile",
+        y_title="Program",
     )
     fig.update_xaxes(showgrid=False, tickformat=",.0%")
     fig.add_traces(decile_fig.data, 1, 1)
     fig.update_layout(
         barmode="stack",
-        title=f"Distribution of gains and losses by {decile_type} decile",
+        title=f"Distribution of gains and losses by program participation under Blank Slate UBI",
     )
     for i in range(5):
         fig.data[i].showlegend = False
-    return charts.formatted_fig_json(fig)
+    return format_fig(fig)

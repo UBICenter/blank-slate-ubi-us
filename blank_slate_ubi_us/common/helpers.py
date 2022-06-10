@@ -185,7 +185,10 @@ def blank_slate_reform(
         ),
     )
 
+
 def blank_slate_ubi() -> Reform:
     policy_file = REPO / "blank_slate_ubi_us" / "data" / "policy.yaml"
-    policy = yaml.load(policy_file.read_text(), Loader=yaml.SafeLoader)["policy"]
+    policy = yaml.load(policy_file.read_text(), Loader=yaml.SafeLoader)[
+        "policy"
+    ]
     return blank_slate_reform(**policy)

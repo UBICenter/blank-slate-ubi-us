@@ -85,6 +85,7 @@ def solve_blank_slate_policy() -> Tuple[float, float, float]:
         senior_amount,
     )
 
+
 def save_optimal_policy(
     young_child_amount: float,
     older_child_amount: float,
@@ -111,8 +112,7 @@ def save_optimal_policy(
         result = yaml.dump(
             {
                 "policy": {
-                    name: f"{value:_.0f}"
-                    for name, value in zip(names, policy)
+                    name: f"{value:_.0f}" for name, value in zip(names, policy)
                 },
             },
         )
@@ -138,5 +138,3 @@ if __name__ == "__main__":
         f"Mean percentage loss: {mean_percentage_loss(young_child_amount, older_child_amount, young_adult_amount, adult_amount):.3%}"
     )
     save_optimal_policy(*policy)
-
-
