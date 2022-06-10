@@ -2,24 +2,31 @@ import plotly.express as px
 import pandas as pd
 from ubicenter import format_fig
 
+
 def us_state_choropleth(baseline, reformed):
-    gain = reformed.calc("spm_unit_net_income", map_to="household") - baseline.calc("spm_unit_net_income", map_to="household")
-    people = pd.Series(baseline.calc("person_weight", map_to="household").values)
+    gain = reformed.calc(
+        "spm_unit_net_income", map_to="household"
+    ) - baseline.calc("spm_unit_net_income", map_to="household")
+    people = pd.Series(
+        baseline.calc("person_weight", map_to="household").values
+    )
     income = baseline.calc("spm_unit_net_income", map_to="household")
     state = baseline.calc("state_code")
     gain_by_state = gain.groupby(state).sum() / income.groupby(state).sum()
-    df = pd.DataFrame({
-        "State": gain_by_state.index,
-        "Gain": gain_by_state.values,
-    })
+    df = pd.DataFrame(
+        {
+            "State": gain_by_state.index,
+            "Gain": gain_by_state.values,
+        }
+    )
     df["Label"] = [
         f"On average, people in {state} {'gain' if gain >= 0 else 'lose'} {abs(gain):.1%}"
         for state, gain in zip(df["State"], df["Gain"])
     ]
     fig = px.choropleth(
-        locations=gain_by_state.index, 
-        color=gain_by_state.values, 
-        locationmode="USA-states", 
+        locations=gain_by_state.index,
+        color=gain_by_state.values,
+        locationmode="USA-states",
         scope="usa",
         custom_data=[df.Label],
     )
