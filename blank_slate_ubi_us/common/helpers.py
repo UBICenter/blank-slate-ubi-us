@@ -4,6 +4,8 @@ from openfisca_us.reforms import abolish
 from openfisca_us import Microsimulation
 import logging
 from blank_slate_ubi_us import REPO
+import yaml
+from pathlib import Path
 
 logging.basicConfig(level=logging.INFO)
 
@@ -112,6 +114,7 @@ blank_slate_funding = (
     abolish("snap_normal_allotment"),
     abolish("ssi"),
     abolish("tanf"),
+    abolish("spm_unit_capped_housing_subsidy"),
     flat_tax(0.4),
     # TODO: childcare, housing, broadband
 )
@@ -181,3 +184,8 @@ def blank_slate_reform(
             senior_amount,
         ),
     )
+
+def blank_slate_ubi() -> Reform:
+    policy_file = REPO / "blank_slate_ubi_us" / "data" / "policy.yaml"
+    policy = yaml.load(policy_file.read_text(), Loader=yaml.SafeLoader)["policy"]
+    return blank_slate_reform(**policy)

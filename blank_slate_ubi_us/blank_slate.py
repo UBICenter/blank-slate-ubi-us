@@ -3,6 +3,8 @@ from blank_slate_ubi_us.common import UBI_FUNDING, blank_slate_df
 import numpy as np
 from scipy.optimize import differential_evolution
 from argparse import ArgumentParser
+import yaml
+from blank_slate_ubi_us import REPO
 
 df = blank_slate_df
 
@@ -83,6 +85,39 @@ def solve_blank_slate_policy() -> Tuple[float, float, float]:
         senior_amount,
     )
 
+def save_optimal_policy(
+    young_child_amount: float,
+    older_child_amount: float,
+    young_adult_amount: float,
+    adult_amount: float,
+    senior_amount: float,
+):
+    policy_file = REPO / "blank_slate_ubi_us" / "data" / "policy.yaml"
+    policy = (
+        young_child_amount,
+        older_child_amount,
+        young_adult_amount,
+        adult_amount,
+        senior_amount,
+    )
+    names = (
+        "young_child_amount",
+        "older_child_amount",
+        "young_adult_amount",
+        "adult_amount",
+        "senior_amount",
+    )
+    with policy_file.open("w") as f:
+        result = yaml.dump(
+            {
+                "policy": {
+                    name: f"{value:_.0f}"
+                    for name, value in zip(names, policy)
+                },
+            },
+        )
+        f.write(result.replace("'", ""))
+
 
 if __name__ == "__main__":
     parser = ArgumentParser(
@@ -95,10 +130,13 @@ if __name__ == "__main__":
         young_adult_amount,
         adult_amount,
         senior_amount,
-    ) = solve_blank_slate_policy()
+    ) = policy = solve_blank_slate_policy()
     print(
         f"Optimal UBI levels:\n  0-5: ${young_child_amount:,.0f} per year\n  6-17: ${older_child_amount:,.0f} per year\n  18-24: ${young_adult_amount:,.0f} per year\n  25-64: ${adult_amount:,.0f} per year\n  65+: ${senior_amount:,.0f} per year"
     )
     print(
         f"Mean percentage loss: {mean_percentage_loss(young_child_amount, older_child_amount, young_adult_amount, adult_amount):.3%}"
     )
+    save_optimal_policy(*policy)
+
+

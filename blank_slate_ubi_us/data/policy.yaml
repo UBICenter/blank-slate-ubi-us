@@ -1,0 +1,6 @@
+policy:
+  adult_amount: 9_536
+  older_child_amount: 4_296
+  senior_amount: 7_431
+  young_adult_amount: 6_350
+  young_child_amount: 4_993
