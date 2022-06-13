@@ -86,14 +86,6 @@ def intra_decile_graph_data(
             subset = subset[rel_gain > lower]
         if upper is not None:
             subset = subset[rel_gain <= upper]
-        all_row = pd.DataFrame(
-            {
-                "fraction": [subset.count() / rel_gain.count()],
-                "program": "All",
-                "outcome": name,
-            }
-        )
-        l.append(all_row)
     return pd.concat(l).reset_index()
 
 
