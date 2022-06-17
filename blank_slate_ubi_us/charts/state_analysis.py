@@ -1,6 +1,6 @@
 import plotly.express as px
 import pandas as pd
-from ubicenter import format_fig
+from blank_slate_ubi_us.charts.helpers import format_fig
 from ubicenter.plotly import BLUE
 
 

@@ -7,7 +7,7 @@ from openfisca_tools import Microsimulation
 import pandas as pd
 from policyengine.utils import charts
 from policyengine.utils.general import PolicyEngineResultsConfig
-from ubicenter import format_fig
+from blank_slate_ubi_us.charts.helpers import format_fig
 
 NAMES = (
     "Gain more than 5%",
