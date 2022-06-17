@@ -16,6 +16,7 @@ def prepare_simulation():
     class reform(Reform):
         def apply(self):
             self.neutralize_variable("spm_unit_net_income_reported")
+            self.neutralize_variable("snap_emergency_allotment")
 
     return reform
 
@@ -32,7 +33,9 @@ def flat_tax(rate: float) -> Reform:
 
     class spm_unit_taxes(baseline_variables["spm_unit_taxes"]):
         def formula(spm_unit, period, parameters):
-            flat_tax = add(spm_unit, period, ["adjusted_gross_income"]) * rate
+            agi = add(spm_unit, period, ["adjusted_gross_income"])
+            taxable_ss = add(spm_unit, period, ["taxable_social_security"])
+            flat_tax = (agi - taxable_ss) * rate
             state_tax = spm_unit("spm_unit_state_tax", period)
             return flat_tax + state_tax
 
@@ -115,7 +118,7 @@ blank_slate_funding = (
     abolish("ssi"),
     abolish("tanf"),
     abolish("spm_unit_capped_housing_subsidy"),
-    flat_tax(0.4),
+    flat_tax(0.45),
     # TODO: childcare, housing, broadband
 )
 
@@ -153,8 +156,6 @@ if not blank_slate_df_path.exists():
             weight=baseline.calc("spm_unit_weight", 2022),
         )
     )
-
-    blank_slate_df = blank_slate_df[blank_slate_df.baseline_net_income >= 0]
 
     blank_slate_df.to_csv(blank_slate_df_path, compression="gzip")
     logging.info(f"Completed generation of {blank_slate_df_path}.")

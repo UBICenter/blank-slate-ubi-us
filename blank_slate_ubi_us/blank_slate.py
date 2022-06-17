@@ -46,10 +46,8 @@ def mean_percentage_loss(
     )
     gain = final_net_income - df.baseline_net_income
     absolute_loss = np.maximum(0, -gain)
-    pct_loss = absolute_loss / df.baseline_net_income
+    pct_loss = absolute_loss / np.maximum(100, df.baseline_net_income)
     average = np.average(pct_loss, weights=df.weight * df.count_person)
-    if (senior_amount < 1e3) and average < 0.05:
-        a = 1
     return average
 
 
