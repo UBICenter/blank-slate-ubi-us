@@ -114,11 +114,11 @@ blank_slate_df_path = (
 blank_slate_funding = (
     prepare_simulation(),
     abolish("wic"),
-    abolish("snap_normal_allotment"),
+    abolish("snap"),
     abolish("ssi"),
     abolish("tanf"),
     abolish("spm_unit_capped_housing_subsidy"),
-    flat_tax(0.45),
+    flat_tax(0.5),
     # TODO: childcare, housing, broadband
 )
 
@@ -127,7 +127,8 @@ BLANK_SLATE_FUNDING_SUBREFORM_NAMES = [
     "Abolish SNAP",
     "Abolish SSI",
     "Abolish TANF",
-    "40% flat tax",
+    "Abolish housing subsidies",
+    "50% flat tax",
 ]
 
 if not blank_slate_df_path.exists():
