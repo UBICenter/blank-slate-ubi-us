@@ -1,11 +1,18 @@
 from openfisca_us.model_api import *
-from openfisca_us.tools.baseline_variables import baseline_variables
 from openfisca_us.reforms import abolish
 from openfisca_us import Microsimulation
 import logging
 from blank_slate_ubi_us import REPO
 import yaml
-from pathlib import Path
+from openfisca_us import CountryTaxBenefitSystem
+from policyengine.utils.reforms import (
+    use_current_parameters,
+    create_reform,
+    get_PE_parameters,
+)
+from policyengine.countries.us import US
+
+us = US()
 
 logging.basicConfig(level=logging.INFO)
 
@@ -18,93 +25,24 @@ def prepare_simulation():
             self.neutralize_variable("spm_unit_net_income_reported")
             self.neutralize_variable("snap_emergency_allotment")
 
-    return reform
+    return reform, use_current_parameters()
 
 
-def flat_tax(rate: float) -> Reform:
-    """Create a reform converting federal,
-
-    Args:
-        rate (float): The flat tax rate.
-
-    Returns:
-        Reform: The OpenFisca reform.
-    """
-
-    class spm_unit_taxes(baseline_variables["spm_unit_taxes"]):
-        def formula(spm_unit, period, parameters):
-            agi = add(spm_unit, period, ["adjusted_gross_income"])
-            taxable_ss = add(spm_unit, period, ["taxable_social_security"])
-            flat_tax = (agi - taxable_ss) * rate
-            state_tax = spm_unit("spm_unit_state_tax", period)
-            return flat_tax + state_tax
-
-    class reform(Reform):
-        def apply(self):
-            self.update_variable(spm_unit_taxes)
-
-    return reform
-
-
-def ubi(
-    young_child_amount: float,
-    older_child_amount: float,
-    young_adult_amount: float,
-    adult_amount: float,
-    senior_amount: float,
-) -> Reform:
-    """Create a reform adding a universal basic income.
-
-    Args:
-        young_child_amount (float): The yearly payment for children under 6.
-        older_child_amount (float): The yearly payment for children aged 6-17.
-        young_adult_amount (float): The yearly payment for adults aged 18-24.
-        adult_amount (float): The yearly payment for adults aged 25-64.
-        senior_amount (float): The yearly payment for seniors aged 65+.
-
-    Returns:
-        Reform: The OpenFisca reform.
-    """
-
-    class ubi(Variable):
-        value_type = float
-        entity = Person
-        label = "UBI"
-        definition_period = YEAR
-
-        def formula(person, period, parameters):
-            age = person("age", period)
-            return select(
-                [
-                    age < 6,
-                    (age >= 6) & (age < 18),
-                    (age >= 18) & (age < 25),
-                    (age >= 25) & (age < 65),
-                    (age >= 65),
-                ],
-                [
-                    young_child_amount,
-                    older_child_amount,
-                    young_adult_amount,
-                    adult_amount,
-                    senior_amount,
-                ],
-            )
-
-    class spm_unit_benefits(baseline_variables["spm_unit_benefits"]):
-        def formula(spm_unit, period, parameters):
-            original_benefits = baseline_variables[
-                "spm_unit_benefits"
-            ].formula(spm_unit, period, parameters)
-            ubi_amount = add(spm_unit, period, ["ubi"])
-            return original_benefits + ubi_amount
-
-    class reform(Reform):
-        def apply(self):
-            self.add_variable(ubi)
-            self.update_variable(spm_unit_benefits)
-
-    return reform
+def blank_slate_funding_reform() -> Reform:
+    reform_dict = dict(
+        abolish_income_tax=1,
+        abolish_emp_payroll_tax=1,
+        abolish_self_emp_tax=1,
+        abolish_housing_subsidies=1,
+        abolish_tanf=1,
+        abolish_ssi=1,
+        abolish_snap=1,
+        abolish_wic=1,
+        flat_tax=0.50,
+        baseline_abolish_snap_ea=1,
+    )
+    reform = create_reform(reform_dict, get_PE_parameters(us.baseline_system))
+    return reform["reform"]["reform"]
 
 
 blank_slate_df_path = (
@@ -113,13 +51,7 @@ blank_slate_df_path = (
 
 blank_slate_funding = (
     prepare_simulation(),
-    abolish("wic"),
-    abolish("snap"),
-    abolish("ssi"),
-    abolish("tanf"),
-    abolish("spm_unit_capped_housing_subsidy"),
-    flat_tax(0.5),
-    # TODO: childcare, housing, broadband
+    blank_slate_funding_reform(),
 )
 
 BLANK_SLATE_FUNDING_SUBREFORM_NAMES = [
@@ -137,10 +69,12 @@ if not blank_slate_df_path.exists():
 
     baseline = Microsimulation(prepare_simulation())
     funded = Microsimulation(blank_slate_funding)
-    age = baseline.calc("age", 2022)
+    age = baseline.calc("age", 2022).values
     blank_slate_df = pd.DataFrame(
         dict(
-            baseline_net_income=baseline.calc("spm_unit_net_income", 2022),
+            baseline_net_income=baseline.calc(
+                "spm_unit_net_income", 2022
+            ).values,
             count_young_child=baseline.map_to(age < 6, "person", "spm_unit"),
             count_older_child=baseline.map_to(
                 (age >= 6) & (age < 18), "person", "spm_unit"
@@ -153,8 +87,8 @@ if not blank_slate_df_path.exists():
             ),
             count_senior=baseline.map_to(age >= 65, "person", "spm_unit"),
             count_person=baseline.map_to(age >= 0, "person", "spm_unit"),
-            funded_net_income=funded.calc("spm_unit_net_income", 2022),
-            weight=baseline.calc("spm_unit_weight", 2022),
+            funded_net_income=funded.calc("spm_unit_net_income", 2022).values,
+            weight=baseline.calc("spm_unit_weight", 2022).values,
         )
     )
 

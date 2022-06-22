@@ -5,6 +5,7 @@ from scipy.optimize import differential_evolution
 from argparse import ArgumentParser
 import yaml
 from blank_slate_ubi_us import REPO
+from policyengine.utils.reforms import use_current_parameters
 
 df = blank_slate_df
 
@@ -67,7 +68,7 @@ def solve_blank_slate_policy() -> Tuple[float, float, float]:
     ) = differential_evolution(
         lambda x: mean_percentage_loss(*x),
         bounds=[(0, 15e4)] * 4,
-        maxiter=int(1e4),
+        maxiter=int(1e3),
     ).x
     senior_amount = get_senior_amount(
         young_child_amount,
