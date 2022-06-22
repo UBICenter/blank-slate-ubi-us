@@ -1,5 +1,3 @@
-
-
 def format_fig(fig):
     fig.update_xaxes(
         title_font=dict(size=16, color="black"), tickfont={"size": 14}
