@@ -5,7 +5,7 @@ from scipy.optimize import differential_evolution
 from argparse import ArgumentParser
 import yaml
 from blank_slate_ubi_us import REPO
-from policyengine.utils.reforms import use_current_parameters
+import pandas as pd
 
 df = blank_slate_df
 
@@ -15,7 +15,12 @@ def get_senior_amount(
     older_child_amount: float,
     young_adult_amount: float,
     adult_amount: float,
+    df: pd.DataFrame,
 ) -> float:
+    UBI_FUNDING = (
+        (df.baseline_net_income - df.funded_net_income)
+        * df.weight
+    ).sum()
     return (
         UBI_FUNDING
         - young_child_amount * (df.count_young_child * df.weight).sum()
@@ -30,6 +35,7 @@ def mean_percentage_loss(
     older_child_amount: float,
     young_adult_amount: float,
     adult_amount: float,
+    df: pd.DataFrame,
 ) -> float:
     senior_amount = get_senior_amount(
         young_child_amount,
@@ -52,7 +58,7 @@ def mean_percentage_loss(
     return average
 
 
-def solve_blank_slate_policy() -> Tuple[float, float, float]:
+def solve_blank_slate_policy(df: pd.DataFrame) -> Tuple[float, float, float]:
     """Solves for the child, adult and senior UBI amounts with
     the least mean percentage loss.
 
@@ -66,7 +72,7 @@ def solve_blank_slate_policy() -> Tuple[float, float, float]:
         young_adult_amount,
         adult_amount,
     ) = differential_evolution(
-        lambda x: mean_percentage_loss(*x),
+        lambda x: mean_percentage_loss(*x, df),
         bounds=[(0, 15e4)] * 4,
         maxiter=int(1e3),
     ).x
@@ -75,6 +81,7 @@ def solve_blank_slate_policy() -> Tuple[float, float, float]:
         older_child_amount,
         young_adult_amount,
         adult_amount,
+        df,
     )
     return (
         young_child_amount,
@@ -129,11 +136,11 @@ if __name__ == "__main__":
         young_adult_amount,
         adult_amount,
         senior_amount,
-    ) = policy = solve_blank_slate_policy()
+    ) = policy = solve_blank_slate_policy(df)
     print(
         f"Optimal UBI levels:\n  0-5: ${young_child_amount:,.0f} per year\n  6-17: ${older_child_amount:,.0f} per year\n  18-24: ${young_adult_amount:,.0f} per year\n  25-64: ${adult_amount:,.0f} per year\n  65+: ${senior_amount:,.0f} per year"
     )
     print(
-        f"Mean percentage loss: {mean_percentage_loss(young_child_amount, older_child_amount, young_adult_amount, adult_amount):.3%}"
+        f"Mean percentage loss: {mean_percentage_loss(young_child_amount, older_child_amount, young_adult_amount, adult_amount, df):.3%}"
     )
     save_optimal_policy(*policy)

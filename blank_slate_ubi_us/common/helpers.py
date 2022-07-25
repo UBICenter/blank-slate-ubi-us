@@ -86,19 +86,21 @@ def ubi(
 
     return reform
 
-def blank_slate_funding_reform() -> Reform:
-    reform_dict = dict(
-        abolish_income_tax=1,
-        abolish_emp_payroll_tax=1,
-        abolish_self_emp_tax=1,
-        abolish_housing_subsidies=1,
-        abolish_tanf=1,
-        abolish_ssi=1,
-        abolish_snap=1,
-        abolish_wic=1,
-        flat_tax=0.40,
-        baseline_abolish_snap_ea=1,
-    )
+BLANK_SLATE_PARAMETERS = dict(
+    abolish_income_tax=1,
+    abolish_emp_payroll_tax=1,
+    abolish_self_emp_tax=1,
+    abolish_housing_subsidies=1,
+    abolish_tanf=1,
+    abolish_ssi=1,
+    abolish_snap=1,
+    abolish_wic=1,
+    flat_tax=0.40,
+    baseline_abolish_snap_ea=1,
+    ptc_flat_tax=1,
+)
+
+def blank_slate_funding_reform(reform_dict: dict = BLANK_SLATE_PARAMETERS) -> Reform:
     reform = create_reform(reform_dict, get_PE_parameters(us.baseline_system))
     return reform["reform"]["reform"]
 
@@ -121,12 +123,15 @@ BLANK_SLATE_FUNDING_SUBREFORM_NAMES = [
     "50% flat tax",
 ]
 
-if not blank_slate_df_path.exists():
-    logging.info(f"Did not find {blank_slate_df_path}, generating.")
-    blank_slate_df_path.parent.mkdir(exist_ok=True)
-
+def create_blank_slate_df(parameters: dict = {}) -> pd.DataFrame:
+    params = BLANK_SLATE_PARAMETERS
+    params.update(parameters)
+    funding_reform = (
+        prepare_simulation(),
+        blank_slate_funding_reform(parameters),
+    )
     baseline = Microsimulation(prepare_simulation())
-    funded = Microsimulation(blank_slate_funding)
+    funded = Microsimulation(funding_reform)
     age = baseline.calc("age", 2022).values
     blank_slate_df = pd.DataFrame(
         dict(
@@ -149,7 +154,12 @@ if not blank_slate_df_path.exists():
             weight=baseline.calc("spm_unit_weight", 2022).values,
         )
     )
+    return blank_slate_df
 
+if not blank_slate_df_path.exists():
+    logging.info(f"Did not find {blank_slate_df_path}, generating.")
+    blank_slate_df_path.parent.mkdir(exist_ok=True)
+    blank_slate_df = create_blank_slate_df()
     blank_slate_df.to_csv(blank_slate_df_path, compression="gzip")
     logging.info(f"Completed generation of {blank_slate_df_path}.")
 else:
