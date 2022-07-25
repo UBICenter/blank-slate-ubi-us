@@ -5,6 +5,7 @@ import logging
 from blank_slate_ubi_us import REPO
 import yaml
 from openfisca_us import CountryTaxBenefitSystem
+from openfisca_us.tools.baseline_variables import baseline_variables
 from policyengine.utils.reforms import (
     use_current_parameters,
     create_reform,
@@ -27,6 +28,63 @@ def prepare_simulation():
 
     return reform, use_current_parameters()
 
+def ubi(
+    young_child_amount: float,
+    older_child_amount: float,
+    young_adult_amount: float,
+    adult_amount: float,
+    senior_amount: float,
+) -> Reform:
+    """Create a reform adding a universal basic income.
+    Args:
+        young_child_amount (float): The yearly payment for children under 6.
+        older_child_amount (float): The yearly payment for children aged 6-17.
+        young_adult_amount (float): The yearly payment for adults aged 18-24.
+        adult_amount (float): The yearly payment for adults aged 25-64.
+        senior_amount (float): The yearly payment for seniors aged 65+.
+    Returns:
+        Reform: The OpenFisca reform.
+    """
+
+    class ubi(Variable):
+        value_type = float
+        entity = Person
+        label = "UBI"
+        definition_period = YEAR
+
+        def formula(person, period, parameters):
+            age = person("age", period)
+            return select(
+                [
+                    age < 6,
+                    (age >= 6) & (age < 18),
+                    (age >= 18) & (age < 25),
+                    (age >= 25) & (age < 65),
+                    (age >= 65),
+                ],
+                [
+                    young_child_amount,
+                    older_child_amount,
+                    young_adult_amount,
+                    adult_amount,
+                    senior_amount,
+                ],
+            )
+
+    class spm_unit_benefits(baseline_variables["spm_unit_benefits"]):
+        def formula(spm_unit, period, parameters):
+            original_benefits = baseline_variables[
+                "spm_unit_benefits"
+            ].formula(spm_unit, period, parameters)
+            ubi_amount = add(spm_unit, period, ["ubi"])
+            return original_benefits + ubi_amount
+
+    class reform(Reform):
+        def apply(self):
+            self.add_variable(ubi)
+            self.update_variable(spm_unit_benefits)
+
+    return reform
 
 def blank_slate_funding_reform() -> Reform:
     reform_dict = dict(
@@ -38,7 +96,7 @@ def blank_slate_funding_reform() -> Reform:
         abolish_ssi=1,
         abolish_snap=1,
         abolish_wic=1,
-        flat_tax=0.50,
+        flat_tax=0.40,
         baseline_abolish_snap_ea=1,
     )
     reform = create_reform(reform_dict, get_PE_parameters(us.baseline_system))
