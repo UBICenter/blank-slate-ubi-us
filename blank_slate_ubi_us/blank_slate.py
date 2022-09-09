@@ -42,6 +42,7 @@ def mean_percentage_loss(
         older_child_amount,
         young_adult_amount,
         adult_amount,
+        df,
     )
     final_net_income = (
         df.funded_net_income

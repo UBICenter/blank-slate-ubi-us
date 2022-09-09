@@ -6,14 +6,11 @@ from blank_slate_ubi_us import REPO
 import yaml
 from openfisca_us import CountryTaxBenefitSystem
 from openfisca_us.tools.baseline_variables import baseline_variables
-from policyengine.utils.reforms import (
-    use_current_parameters,
-    create_reform,
-    get_PE_parameters,
-)
-from policyengine.countries.us import US
+from policyengine.country.openfisca.reforms import Policy, PolicyReform, use_current_parameters
+from policyengine.country.openfisca.parameters import build_parameters
+from policyengine import PolicyEngineUS
 
-us = US()
+us = PolicyEngineUS()
 
 logging.basicConfig(level=logging.INFO)
 
@@ -100,9 +97,10 @@ BLANK_SLATE_PARAMETERS = dict(
     ptc_flat_tax=1,
 )
 
+system = CountryTaxBenefitSystem()
+
 def blank_slate_funding_reform(reform_dict: dict = BLANK_SLATE_PARAMETERS) -> Reform:
-    reform = create_reform(reform_dict, get_PE_parameters(us.baseline_system))
-    return reform["reform"]["reform"]
+    return Policy(reform_dict, build_parameters(system))
 
 
 blank_slate_df_path = (
