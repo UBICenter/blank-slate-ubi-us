@@ -1,12 +1,12 @@
-from typing import Tuple, Type
+from typing import Type
 import plotly.express as px
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 import numpy as np
 from openfisca_tools import Microsimulation
 import pandas as pd
-from policyengine.utils import charts
-from policyengine.utils.general import PolicyEngineResultsConfig
+from policyengine.country.results_config import PolicyEngineResultsConfig
+from policyengine.impact.utils import *
 
 NAMES = (
     "Gain more than 5%",
@@ -94,11 +94,11 @@ def intra_decile_graph_data(
 
 
 INTRA_DECILE_COLORS = (
-    charts.DARK_GRAY,
-    charts.GRAY,
-    charts.LIGHT_GRAY,
-    charts.LIGHT_GREEN,
-    charts.DARK_GREEN,
+    DARK_GRAY,
+    GRAY,
+    LIGHT_GRAY,
+    LIGHT_GREEN,
+    DARK_GREEN,
 )[::-1]
 
 
@@ -144,7 +144,7 @@ def single_intra_decile_graph(df: pd.DataFrame) -> go.Figure:
         color_discrete_sequence=INTRA_DECILE_COLORS,
         orientation="h",
     )
-    charts.add_custom_hovercard(fig)
+    add_custom_hovercard(fig)
     return fig
 
 
@@ -192,4 +192,4 @@ def age_winner_chart(
     )
     for i in range(5):
         fig.data[i].showlegend = False
-    return charts.formatted_fig_json(fig)
+    return formatted_fig_json(fig)

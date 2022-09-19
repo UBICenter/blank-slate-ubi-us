@@ -1,6 +1,6 @@
 import plotly.express as px
 import pandas as pd
-from blank_slate_ubi_us.charts.helpers import format_fig
+from ubicenter import format_fig
 
 
 def us_state_choropleth(baseline, reformed):
@@ -38,4 +38,4 @@ def us_state_choropleth(baseline, reformed):
     fig.update_traces(
         hovertemplate="%{customdata[0]}",
     )
-    return format_fig(fig)
+    return fig
