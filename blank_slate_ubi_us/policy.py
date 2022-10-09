@@ -114,7 +114,7 @@ class BlankSlatePolicy:
         )
         return average
 
-    def solve(self) -> dict:
+    def solve(self, return_amounts: bool = False, return_loss: bool = False) -> dict:
         (
             self.young_child,
             self.older_child,
@@ -130,10 +130,29 @@ class BlankSlatePolicy:
         )
         self.reform = dict(
             **self.base_reform,
-            young_child_bi=round(self.young_child),
-            older_child_bi=round(self.older_child),
-            young_adult_bi=round(self.young_adult),
-            older_adult_bi=round(self.adult),
-            senior_bi=round(self.senior),
+            young_child_bi_amount=round(self.young_child),
+            older_child_bi_amount=round(self.older_child),
+            young_adult_bi_amount=round(self.young_adult),
+            older_adult_bi_amount=round(self.adult),
+            senior_bi_amount=round(self.senior),
         )
-        return self.reform
+        if not return_amounts and not return_loss:
+            return self.reform
+        
+        data = dict(reform=self.reform)
+
+        if return_amounts:
+            data["amounts"] = dict(
+                young_child=self.young_child,
+                older_child=self.older_child,
+                young_adult=self.young_adult,
+                adult=self.adult,
+                senior=self.senior,
+            )
+        
+        if return_loss:
+            data["loss"] = self.mean_percentage_loss(
+                self.young_child, self.older_child, self.young_adult, self.adult
+            )
+        
+        return data
