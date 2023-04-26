@@ -1,12 +1,13 @@
 from typing import Type
 import plotly.express as px
-import plotly.graph_objects as go
 from plotly.subplots import make_subplots
+import plotly.graph_objects as go
 import numpy as np
 from openfisca_tools import Microsimulation
 import pandas as pd
-from policyengine.country.results_config import PolicyEngineResultsConfig
 from policyengine.impact.utils import *
+from policyengine.country.results_config import PolicyEngineResultsConfig
+
 
 NAMES = (
     "Gain more than 5%",
@@ -39,8 +40,7 @@ def intra_decile_graph_data(
         else config.household_wealth_variable,
         map_to="person",
     )
-    age = baseline.calc("age")
-    decile = np.minimum(age // 10, 8)
+    decile = income.decile_rank()
     baseline_hh_net_income = baseline.calc(
         config.household_net_income_variable, map_to="person"
     )
@@ -52,7 +52,7 @@ def intra_decile_graph_data(
     BANDS = (None, 0.05, 1e-3, -1e-3, -0.05, None)
     for upper, lower, name in zip(BANDS[:-1], BANDS[1:], NAMES):
         fractions = []
-        for j in range(0, 9):
+        for j in range(1, 11):
             subset = rel_gain[decile == j]
             if lower is not None:
                 subset = subset[rel_gain > lower]
@@ -62,17 +62,7 @@ def intra_decile_graph_data(
         tmp = pd.DataFrame(
             {
                 "fraction": fractions,
-                "decile": [
-                    "Under 10",
-                    "10-19",
-                    "20-29",
-                    "30-39",
-                    "40-49",
-                    "50-59",
-                    "60-69",
-                    "70-79",
-                    "80 or over",
-                ],
+                "decile": list(map(str, range(1, 11))),
                 "outcome": name,
             }
         )
@@ -120,7 +110,9 @@ def intra_decile_label(
     if decile == "All":
         res += "all people "
     else:
-        res += "people aged " + decile.lower()
+        res += (
+            "people in the " + ordinal(int(decile)) + f" {decile_type} decile "
+        )
     if outcome == "No change":
         return res + "experience no change"
     else:
@@ -148,7 +140,7 @@ def single_intra_decile_graph(df: pd.DataFrame) -> go.Figure:
     return fig
 
 
-def age_winner_chart(
+def intra_decile_chart(
     baseline: Microsimulation,
     reformed: Microsimulation,
     config: Type,
@@ -174,18 +166,19 @@ def age_winner_chart(
     )
     # Create the decile figure first, then the total to go above it.
     decile_fig = single_intra_decile_graph(df[df.decile != "All"])
-    # total_fig = single_intra_decile_graph(df[df.decile == "All"])
+    total_fig = single_intra_decile_graph(df[df.decile == "All"])
     fig = make_subplots(
-        rows=1,
+        rows=2,
         cols=1,
         shared_xaxes=True,
-        row_heights=[10],
+        row_heights=[1, 10],
         vertical_spacing=0.05,
         x_title="Population share",
-        y_title=f"{'Age' if decile_type == 'income' else 'Wealth'} decile",
+        y_title=f"{'Income' if decile_type == 'income' else 'Wealth'} decile",
     )
     fig.update_xaxes(showgrid=False, tickformat=",.0%")
-    fig.add_traces(decile_fig.data, 1, 1)
+    fig.add_traces(total_fig.data, 1, 1)
+    fig.add_traces(decile_fig.data, 2, 1)
     fig.update_layout(
         barmode="stack",
         title=f"Distribution of gains and losses by {decile_type} decile",

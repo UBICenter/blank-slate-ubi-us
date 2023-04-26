@@ -1,8 +1,41 @@
-from policyengine import PolicyEngineUS
 import pandas as pd
 import numpy as np
 from scipy.optimize import differential_evolution
+from policyengine_us import Microsimulation
+from policyengine_us.model_api import *
 
+def create_baseline_reform() -> Type[Reform]:
+    # Just the SNAP EA abolition
+    def modify_parameters(parameters):
+        parameters.gov.usda.snap.emergency_allotment.allowed.update(period="year:2023:1", value=False)
+        return parameters
+    
+    class baseline_reform(Reform):
+        def apply(self):
+            self.modify_parameters(modify_parameters)
+
+    return baseline_reform
+
+def create_funding_reform(flat_tax_rate: float) -> Type[Reform]:
+    def modify_parameters(parameters):
+        parameters.gov.contrib.ubi_center.flat_tax.abolish_federal_income_tax.update(period="year:2023:1", value=True)
+        parameters.gov.contrib.ubi_center.flat_tax.abolish_payroll_tax.update(period="year:2023:1", value=True)
+        parameters.gov.contrib.ubi_center.flat_tax.abolish_self_emp_tax.update(period="year:2023:1", value=True)
+        parameters.gov.hud.abolition.update(period="year:2023:1", value=True)
+        parameters.gov.hhs.tanf.abolish_tanf.update(period="year:2023:1", value=True)
+        parameters.gov.ssa.ssi.abolish_ssi.update(period="year:2023:1", value=True)
+        parameters.gov.usda.snap.abolish_snap.update(period="year:2023:1", value=True)
+        parameters.gov.usda.wic.abolish_wic.update(period="year:2023:1", value=True)
+        parameters.gov.contrib.ubi_center.flat_tax.rate.update(period="year:2023:1", value=flat_tax_rate)
+        parameters.gov.contrib.ubi_center.flat_tax.deduct_ptc.update(period="year:2023:1", value=True)
+        parameters.gov.usda.snap.emergency_allotment.allowed.update(period="year:2023:1", value=False)
+        return parameters
+    
+    class funding_reform(Reform):
+        def apply(self):
+            self.modify_parameters(modify_parameters)
+
+    return funding_reform
 
 class BlankSlatePolicy:
     young_child: float = 0
@@ -13,25 +46,8 @@ class BlankSlatePolicy:
     flat_tax_rate: float = 0.40
 
     def __init__(self, flat_tax_rate: float = 0.40):
-        self.policyengine = PolicyEngineUS()
-        self.base_reform = dict(
-            abolish_income_tax=True,
-            abolish_emp_payroll_tax=True,
-            abolish_self_emp_tax=True,
-            abolish_housing_subsidies=True,
-            abolish_tanf=True,
-            abolish_ssi=True,
-            abolish_snap=True,
-            abolish_wic=True,
-            flat_tax=flat_tax_rate,
-            baseline_abolish_snap_ea=True,
-            abolish_snap_ea=True,
-            flat_tax_deduct_ptc=True,
-        )
-        (
-            self.baseline,
-            self.blank_slate_funded,
-        ) = self.policyengine.create_microsimulations(self.base_reform)
+        self.baseline = Microsimulation(reform=create_baseline_reform())
+        self.blank_slate_funded = Microsimulation(reform=create_funding_reform(flat_tax_rate))
         self.df = self.create_dataframe()
         self.ubi_funding = self.get_ubi_funding()
 
@@ -42,28 +58,28 @@ class BlankSlatePolicy:
                 baseline_net_income=self.baseline.calc(
                     "spm_unit_net_income"
                 ).values,
-                count_young_child=self.baseline.map_to(
+                count_young_child=self.baseline.map_result(
                     age < 6, "person", "spm_unit"
                 ),
-                count_older_child=self.baseline.map_to(
+                count_older_child=self.baseline.map_result(
                     (age >= 6) & (age < 18), "person", "spm_unit"
                 ),
-                count_young_adult=self.baseline.map_to(
+                count_young_adult=self.baseline.map_result(
                     (age >= 18) & (age < 25), "person", "spm_unit"
                 ),
-                count_adult=self.baseline.map_to(
+                count_adult=self.baseline.map_result(
                     (age >= 25) & (age < 65), "person", "spm_unit"
                 ),
-                count_senior=self.baseline.map_to(
+                count_senior=self.baseline.map_result(
                     age >= 65, "person", "spm_unit"
                 ),
-                count_person=self.baseline.map_to(
+                count_person=self.baseline.map_result(
                     age >= 0, "person", "spm_unit"
                 ),
-                funded_net_income=self.blank_slate_funded.calc(
+                funded_net_income=self.blank_slate_funded.calculate(
                     "spm_unit_net_income"
                 ).values,
-                weight=self.baseline.calc("spm_unit_weight").values,
+                weight=self.baseline.calculate("spm_unit_weight").values,
             )
         )
 

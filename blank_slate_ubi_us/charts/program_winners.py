@@ -3,7 +3,7 @@ import plotly.express as px
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 import numpy as np
-from openfisca_tools import Microsimulation
+from policyengine_us import Microsimulation
 import pandas as pd
 from policyengine.impact.utils import *
 from policyengine.country.results_config import PolicyEngineResultsConfig
@@ -21,7 +21,7 @@ NAMES = (
 def intra_decile_graph_data(
     baseline: Microsimulation,
     reformed: Microsimulation,
-    config: Type[PolicyEngineResultsConfig],
+    config: Type,
     decile_type: str = "income",
 ) -> pd.DataFrame:
     """Data for the distribution of net income changes by decile and overall.
@@ -54,7 +54,7 @@ def intra_decile_graph_data(
         fractions = []
         for program in programs:
             on_program = (
-                baseline.map_to(
+                baseline.map_result(
                     baseline.calc(program, map_to="household"),
                     "household",
                     "person",
@@ -145,7 +145,7 @@ def single_intra_decile_graph(df: pd.DataFrame) -> go.Figure:
 def program_winner_chart(
     baseline: Microsimulation,
     reformed: Microsimulation,
-    config: Type[PolicyEngineResultsConfig],
+    config: Type,
 ) -> dict:
     df = intra_decile_graph_data(baseline, reformed, config)
     df["hover"] = df.apply(
